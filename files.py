@@ -1,106 +1,58 @@
-import files
-import sys
-from PyQt5.QtWidgets import QWidget, QCheckBox, QApplication, QLabel, \
-       QVBoxLayout, QPushButton, QDateTimeEdit, QGridLayout
-from PyQt5.QtCore import Qt, QDateTime
+import csv
+import matplotlib.pyplot as plt
+from datetime import datetime
+from file_info import file_info
 
+class File:
+	def __init__(self, name, columns, quantity, unit = None, converter = None):
+		self.name = name
+		self.columns = columns
+		self.quantity = quantity
+		self.unit = unit
+		self.converter = converter
+		self.start, self.end = self._find_period()
 
-class MainWindow(QWidget):
-    
-    def __init__(self, parent=None):
-        super().__init__(parent) 
-        self.files = files.get_files()
-        self.checkboxes = []
-        self.col_selects = []
-        self.initUI()
-        
-        
-    def initUI(self):  
-        self.layout = QVBoxLayout()
+	def __str__(self):
+		return self.quantity
+	
+	def _find_period(self):
+		with open(self.name) as file:
+			reader = csv.reader(file, delimiter=';')
+			start = int(next(reader)[0])
+			end = int(list(reader)[-1][0])
+			start, end = datetime.fromtimestamp(start), datetime.fromtimestamp(end)
+			return start, end
 
-        for file in self.files:
-            checkbox = QCheckBox()
-            checkbox.setText(str(file))
-            self.layout.addWidget(checkbox)
-            self.checkboxes.append(checkbox)
+	def _plot_columns(self, start, end, columns):
+		times = []
+		# get the corresponding index for the csv-file, moved by one since the first column is the time
+		get_column_index = lambda col: self.columns.index(col) + 1
+		indices = [get_column_index(col) for col in columns]
 
-            col_select = Col_select(file.columns)
-            col_select.hide()
-            self.col_selects.append(col_select)
-            self.layout.addWidget(col_select)
+		with open(self.name) as fh:
+			times = []
+			quantities = [[] for _ in indices]
+			reader = csv.reader(fh, delimiter = ';')
+			for row in reader:
+				time = datetime.fromtimestamp(int(row[0]))
+				if not (start <= time <= end): 
+					continue
 
-            checkbox.stateChanged.connect(self.toggle_checkbox(col_select))
+				times.append(time)
+				for index, lst in zip(indices, quantities):
+					if self.converter:
+						lst.append(self.converter(int(row[index])))
+					else:
+						lst.append(int(row[index]))
+			for quantity in quantities:
+				plt.plot(times, quantity)
 
-        self._set_date_time_edit()
-        button = QPushButton("Weiter")
-        button.clicked.connect(self.plot)
-        self.layout.addWidget(button)
+def get_files():
+	return [File(**kwargs) for kwargs in file_info]
 
-        self.setLayout(self.layout) 
-        self.setWindowTitle('Csv Plotter')
-        self.show()
+def plot_files(start, end, files, columns_list):
+	get_column_index = lambda file, col: file.columns.index(col) + 1
+	for file, columns in zip(files, columns_list):
+		file._plot_columns(start, end, columns)
+	plt.show()
 
-    def _set_date_time_edit(self):
-        gridLayout = QGridLayout()
-        self.start = QDateTimeEdit()
-        self.end = QDateTimeEdit()
-        gridLayout.addWidget(QLabel("Startzeit"), 0, 0)
-        gridLayout.addWidget(self.start, 0, 1)
-        gridLayout.addWidget(QLabel("Endzeit"), 1, 0)
-        gridLayout.addWidget(self.end, 1, 1)
-        self.layout.addLayout(gridLayout)
-
-
-    def plot(self):
-        files_and_columns = [(file, col_select) for file, checkbox, col_select 
-                            in zip(self.files, self.checkboxes, self.col_selects) 
-                            if checkbox.isChecked()]
-        files_ = [file for file, col in files_and_columns]
-        columns = [col.get_selected() for file, col in files_and_columns]
-
-        files.plot_files(self.start.dateTime().toPyDateTime(),
-              self.end.dateTime().toPyDateTime(), files_, columns)
-        
-
-
-    def toggle_checkbox(self, cb):
-        def wrapped():
-            cb.show() if cb.isHidden() else cb.hide()
-            file_ind = self.col_selects.index(cb)
-            file = self.files[file_ind]
-            # self.start.setDateTimeRange (_datetime_to_Qdatetime(file.start), 
-            #     _datetime_to_Qdatetime(file.end))
-            # self.end.setDateTimeRange (_datetime_to_Qdatetime(file.start), 
-            #     _datetime_to_Qdatetime(file.end))
-            self.start.setDateTime(_datetime_to_Qdatetime(file.start))
-            self.end.setDateTime(_datetime_to_Qdatetime(file.end))
-        return wrapped
-
-def _datetime_to_Qdatetime(date):
-    return QDateTime.fromTime_t(date.timestamp())
-
-class Col_select(QWidget):
-    def __init__(self, columns, parent=None):
-        super().__init__(parent) 
-        self.columns = columns
-        self.checkboxes = []
-        self.initUI()
-
-    def initUI(self):  
-        self.layout = QVBoxLayout()
-        self.layout.setContentsMargins(30, 0, 0, 0)
-        for column in self.columns:
-            checkbox = QCheckBox()
-            checkbox.setText(column)
-            self.layout.addWidget(checkbox)
-            self.checkboxes.append(checkbox)
-        self.setLayout(self.layout) 
-
-    def get_selected(self):
-        return [col for col, checkbox in zip(self.columns, self.checkboxes)
-                if checkbox.isChecked()]
-        
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    sys.exit(app.exec_())

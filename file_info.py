@@ -81,6 +81,6 @@ file_info = [
 				 	"columns" : ["min", "mittel", "max"], 
 				 	"quantity" : "Puffer Unten", 
 				 	"unit" : "°C", 
-				 	"converter" : lambda x: x/10.
+				 	"converter" : lambda x: x/10.0
 				}
 			]
