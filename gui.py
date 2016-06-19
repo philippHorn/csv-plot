@@ -1,4 +1,4 @@
-import file_info
+import files
 import sys
 from PyQt5.QtWidgets import QWidget, QCheckBox, QApplication, QLabel, \
        QVBoxLayout, QPushButton, QDateTimeEdit, QGridLayout
@@ -9,7 +9,7 @@ class MainWindow(QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent) 
-        self.files = file_info.get_files()
+        self.files = files.get_files()
         self.checkboxes = []
         self.col_selects = []
         self.initUI()
@@ -33,9 +33,10 @@ class MainWindow(QWidget):
 
         self._set_date_time_edit()
         button = QPushButton("Weiter")
-        button.clicked.connect(self.plot)
+        button.clicked.connect(self.plot) 
         self.layout.addWidget(button)
 
+        #self.setGeometry(300, 300, 300, 300)
         self.setLayout(self.layout) 
         self.setWindowTitle('Csv Plotter')
         self.show()
@@ -52,14 +53,25 @@ class MainWindow(QWidget):
 
 
     def plot(self):
-        files_columns = [(file, col_select) for file, checkbox, col_select 
+        files_and_columns = [(file, col_select) for file, checkbox, col_select 
                             in zip(self.files, self.checkboxes, self.col_selects) 
                             if checkbox.isChecked()]
-        files = [file for file, col in files_columns]
-        columns = [col.get_selected() for file, col in files_columns]
-        file_info.plot_files(self.start.dateTime().toPyDateTime(),
-              self.end.dateTime().toPyDateTime(), files, columns)
-        
+        files_ = [file for file, col in files_and_columns]
+        columns = [col.get_selected() for file, col in files_and_columns]
+
+        files.plot_files(self.start.dateTime().toPyDateTime(),
+              self.end.dateTime().toPyDateTime(), files_, columns)
+
+    def set_start(self, py_datetime):
+        qt_datetime = _datetime_to_Qdatetime(py_datetime)
+        if self.start.dateTime() < qt_datetime:
+             self.start.setDateTime(qt_datetime)
+
+    def set_end(self, py_datetime):
+        qt_datetime = _datetime_to_Qdatetime(py_datetime)
+        default = QDateTime.fromString("2000-01-01 00:00:00,0" , "yyyy-MM-dd HH:mm:ss,z")
+        if self.end.dateTime() > qt_datetime or self.end.dateTime() == default:
+             self.end.setDateTime(qt_datetime)
 
 
     def toggle_checkbox(self, cb):
@@ -67,12 +79,8 @@ class MainWindow(QWidget):
             cb.show() if cb.isHidden() else cb.hide()
             file_ind = self.col_selects.index(cb)
             file = self.files[file_ind]
-            # self.start.setDateTimeRange (_datetime_to_Qdatetime(file.start), 
-            #     _datetime_to_Qdatetime(file.end))
-            # self.end.setDateTimeRange (_datetime_to_Qdatetime(file.start), 
-            #     _datetime_to_Qdatetime(file.end))
-            self.start.setDateTime(_datetime_to_Qdatetime(file.start))
-            self.end.setDateTime(_datetime_to_Qdatetime(file.end))
+            self.set_start(file.start)
+            self.set_end(file.end)
         return wrapped
 
 def _datetime_to_Qdatetime(date):
