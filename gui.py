@@ -1,8 +1,11 @@
 import files
 import sys
+import os
+
 from PyQt5.QtWidgets import QWidget, QCheckBox, QApplication, QLabel, \
        QVBoxLayout, QPushButton, QDateTimeEdit, QGridLayout
 from PyQt5.QtCore import Qt, QDateTime
+from PyQt5.QtGui import QPixmap
 
 
 class MainWindow(QWidget):
@@ -10,6 +13,7 @@ class MainWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent) 
         self.files = files.get_files()
+        self.height = 300
         self.checkboxes = []
         self.col_selects = []
         self.initUI()
@@ -17,6 +21,10 @@ class MainWindow(QWidget):
         
     def initUI(self):  
         self.layout = QVBoxLayout()
+        pic = QLabel()
+        pic.setPixmap(QPixmap(os.getcwd() + "/logo3.jpg"))
+        self.layout.addWidget(pic)
+        self.layout.addWidget(QLabel("Wähle Größen:"))
 
         for file in self.files:
             checkbox = QCheckBox()
@@ -36,7 +44,7 @@ class MainWindow(QWidget):
         button.clicked.connect(self.plot) 
         self.layout.addWidget(button)
 
-        #self.setGeometry(300, 300, 300, 300)
+        self.setGeometry(300, 300, 200, self.height)
         self.setLayout(self.layout) 
         self.setWindowTitle('Csv Plotter')
         self.show()
@@ -77,6 +85,8 @@ class MainWindow(QWidget):
     def toggle_checkbox(self, cb):
         def wrapped():
             cb.show() if cb.isHidden() else cb.hide()
+            self.height += 100 if cb.isHidden() else - 100
+            self.resize(200, self.height)
             file_ind = self.col_selects.index(cb)
             file = self.files[file_ind]
             self.set_start(file.start)
