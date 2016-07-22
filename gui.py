@@ -1,7 +1,6 @@
 import files
 import sys
 import os
-
 from PyQt5.QtWidgets import QWidget, QCheckBox, QApplication, QLabel, \
        QVBoxLayout, QPushButton, QDateTimeEdit, QGridLayout
 from PyQt5.QtCore import Qt, QDateTime
@@ -11,6 +10,7 @@ from PyQt5.QtGui import QPixmap
 class MainWindow(QWidget):
     
     def __init__(self, parent=None):
+
         super().__init__(parent) 
         self.files = files.get_files()
         self.height = 300
@@ -20,6 +20,7 @@ class MainWindow(QWidget):
         
         
     def initUI(self):  
+
         self.layout = QVBoxLayout()
         pic = QLabel()
         pic.setPixmap(QPixmap(os.getcwd() + "/logo3.jpg"))
@@ -34,7 +35,8 @@ class MainWindow(QWidget):
 
         for file in self.files:
             checkbox = QCheckBox()
-            checkbox.setText(str(file))
+            text = "{} ({})".format(str(file), file.unit)
+            checkbox.setText(text)
             self.layout.addWidget(checkbox)
             self.checkboxes.append(checkbox)
 
@@ -56,6 +58,7 @@ class MainWindow(QWidget):
         self.show()
 
     def _set_date_time_edit(self):
+
         gridLayout = QGridLayout()
         self.start = QDateTimeEdit()
         self.end = QDateTimeEdit()
@@ -66,6 +69,7 @@ class MainWindow(QWidget):
         self.layout.addLayout(gridLayout)
 
     def _check_submission(self, files_, columns):
+        "checks if submit is valid, shows error message if not"
         msg = ""
         for idx, col in enumerate(columns):
             if col == []:
@@ -95,12 +99,14 @@ class MainWindow(QWidget):
         files.plot_files(self.start.dateTime().toPyDateTime(),
               self.end.dateTime().toPyDateTime(), files_, columns)
 
-    def set_start(self, py_datetime):
+    def _set_start(self, py_datetime):
+
         qt_datetime = _datetime_to_Qdatetime(py_datetime)
         if self.start.dateTime() < qt_datetime:
              self.start.setDateTime(qt_datetime)
 
-    def set_end(self, py_datetime):
+    def _set_end(self, py_datetime):
+
         qt_datetime = _datetime_to_Qdatetime(py_datetime)
         default = QDateTime.fromString("2000-01-01 00:00:00,0" , "yyyy-MM-dd HH:mm:ss,z")
         if self.end.dateTime() > qt_datetime or self.end.dateTime() == default:
@@ -108,27 +114,33 @@ class MainWindow(QWidget):
 
 
     def toggle_checkbox(self, cb):
+        "expand or collapse more options"
         def wrapped():
             cb.show() if cb.isHidden() else cb.hide()
             self.height += 100 if cb.isHidden() else - 100
             self.resize(200, self.height)
             file_ind = self.col_selects.index(cb)
             file = self.files[file_ind]
-            self.set_start(file.start)
-            self.set_end(file.end)
+            self._set_start(file.start)
+            self._set_end(file.end)
         return wrapped
 
 def _datetime_to_Qdatetime(date):   
     return QDateTime.fromTime_t(date.timestamp())
 
 class Col_select(QWidget):
+    """Drop down element to select columns after a quantity was selected"""
+
     def __init__(self, columns, parent=None):
+
         super().__init__(parent) 
         self.columns = columns
         self.checkboxes = []
         self.initUI()
 
+
     def initUI(self):  
+
         self.layout = QVBoxLayout()
         self.layout.setContentsMargins(30, 0, 0, 0)
         for column in self.columns:
@@ -139,6 +151,7 @@ class Col_select(QWidget):
         self.setLayout(self.layout) 
 
     def get_selected(self):
+        
         return [col for col, checkbox in zip(self.columns, self.checkboxes)
                 if checkbox.isChecked()]
         
