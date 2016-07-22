@@ -1,12 +1,17 @@
 import csv
+import numpy
+import matplotlib
 import matplotlib.pyplot as plt
 from datetime import datetime
 from file_info import file_info
+import pandas as pd
+
+
 
 class File:
 	def __init__(self, name, columns, quantity, unit = None, converter = None):
 		self.name = name
-		self.columns = columns
+		self.columns = [quantity + " " + col for col in columns]
 		self.quantity = quantity
 		self.unit = unit
 		self.converter = converter
@@ -16,43 +21,30 @@ class File:
 		return self.quantity
 	
 	def _find_period(self):
-		with open(self.name) as file:
-			reader = csv.reader(file, delimiter=';')
-			start = int(next(reader)[0])
-			end = int(list(reader)[-1][0])
-			start, end = datetime.fromtimestamp(start), datetime.fromtimestamp(end)
-			return start, end
+		self.dataframe = pd.read_csv(self.name, 
+									 sep = ";",
+									 names = ["status"] + self.columns,
+									 index_col = 0,
+									 header = None)
+		
+		self.dataframe.index = pd.to_datetime(self.dataframe.index, unit='s')
+		start = self.dataframe.index[0]
+		end = self.dataframe.index[-1]
+		return start, end
 
-	def _plot_columns(self, start, end, columns):
-		times = []
-		# get the corresponding index for the csv-file, moved by one since the first column is the time
-		get_column_index = lambda col: self.columns.index(col) + 1
-		indices = [get_column_index(col) for col in columns]
+	def _get_columns(self, start, end, columns):
+		df = self.dataframe.loc[:, columns]
+		return df[numpy.logical_and(start < df.index, df.index < end)]
 
-		with open(self.name) as fh:
-			times = []
-			quantities = [[] for _ in indices]
-			reader = csv.reader(fh, delimiter = ';')
-			for row in reader:
-				time = datetime.fromtimestamp(int(row[0]))
-				if not (start <= time <= end): 
-					continue
 
-				times.append(time)
-				for index, lst in zip(indices, quantities):
-					if self.converter:
-						lst.append(self.converter(int(row[index])))
-					else:
-						lst.append(int(row[index]))
-			for quantity in quantities:
-				plt.plot(times, quantity)
 
 def get_files():
 	return [File(**kwargs) for kwargs in file_info]
 
 def plot_files(start, end, files, columns_list):
-	get_column_index = lambda file, col: file.columns.index(col) + 1
+	ax = None
 	for file, columns in zip(files, columns_list):
-		file._plot_columns(start, end, columns)
+		df = file._get_columns(start, end, columns) 
+		ax = df.plot(ax = ax)
 	plt.show()
 
