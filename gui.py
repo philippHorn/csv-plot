@@ -24,6 +24,12 @@ class MainWindow(QWidget):
         pic = QLabel()
         pic.setPixmap(QPixmap(os.getcwd() + "/logo3.jpg"))
         self.layout.addWidget(pic)
+
+        self.flash_msg = QLabel("")
+        self.flash_msg.setStyleSheet("QLabel { color : red; }")
+        self.layout.addWidget(self.flash_msg)
+        self.flash_msg.hide()
+
         self.layout.addWidget(QLabel("Wähle Größen:"))
 
         for file in self.files:
@@ -59,13 +65,32 @@ class MainWindow(QWidget):
         gridLayout.addWidget(self.end, 1, 1)
         self.layout.addLayout(gridLayout)
 
+    def _check_submission(self, files_, columns):
+        msg = ""
+        for idx, col in enumerate(columns):
+            if col == []:
+                msg = ("Bitte eine Größe zu folgender Kategorie auswählen: {}"
+                        .format(files_[idx].quantity))
+        if len(set((file.unit for file in files_))) != 1:
+                msg = "Die Ausgewählten Größen haben unterschiedliche Einheiten."
+                       
+        if msg:
+            self.flash_msg.setText(msg)
+            self.flash_msg.show()
+            return False
+        self.flash_msg.hide()
+        return True
 
     def plot(self):
+
         files_and_columns = [(file, col_select) for file, checkbox, col_select 
                             in zip(self.files, self.checkboxes, self.col_selects) 
                             if checkbox.isChecked()]
         files_ = [file for file, col in files_and_columns]
         columns = [col.get_selected() for file, col in files_and_columns]
+
+        if not self._check_submission(files_, columns):
+            return
 
         files.plot_files(self.start.dateTime().toPyDateTime(),
               self.end.dateTime().toPyDateTime(), files_, columns)
@@ -93,7 +118,7 @@ class MainWindow(QWidget):
             self.set_end(file.end)
         return wrapped
 
-def _datetime_to_Qdatetime(date):
+def _datetime_to_Qdatetime(date):   
     return QDateTime.fromTime_t(date.timestamp())
 
 class Col_select(QWidget):
